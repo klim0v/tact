@@ -36,7 +36,7 @@ functor
 
     type ctx =
       { program : program;
-        mutable scope : tbinding list list;
+        scope : tbinding list list ref;
         mutable updated_items : (int * int) list;
         mutable updated_unions : (int * int) list;
         mutable functions : int }
@@ -102,6 +102,44 @@ functor
                           span = new_name.span } ) )
               in
               self#with_vars args_scope (fun _ -> self#interpret_stmt_list rest)
+          | Assignment {assignment_ident; assignment_expr; _} ->
+              let span = span assignment_expr |> span_to_concrete in
+              (* Update individual bindings *)
+              let rec update' = function
+                | [] ->
+                    None
+                | (name, _) :: rest
+                  when equal_located String.equal name assignment_ident ->
+                    Some
+                      ( make_comptime
+                          ( name,
+                            make_located ~span
+                              ~value:
+                                (Value (self#interpret_expr assignment_expr))
+                              () )
+                      :: rest )
+                | binding :: rest -> (
+                  match update' rest with
+                  | Some updated ->
+                      Some (binding :: updated)
+                  | None ->
+                      None )
+              in
+              (* Update binding sets *)
+              let rec update = function
+                | [] ->
+                    errors#report `Error
+                      (`UnresolvedIdentifier assignment_ident) () ;
+                    []
+                | binding_set :: bindings -> (
+                  match update' binding_set with
+                  | Some binding_set' ->
+                      binding_set' :: bindings
+                  | None ->
+                      binding_set :: update bindings )
+              in
+              ctx.scope := update !(ctx.scope) ;
+              self#interpret_stmt_list rest
           | Break stmt ->
               self#interpret_stmt stmt []
           | Return expr ->
@@ -468,7 +506,7 @@ functor
 
         method private find_ref : string -> expr option =
           fun ref ->
-            match find_in_scope ref ctx.scope with
+            match find_in_scope ref !(ctx.scope) with
             | Some (Comptime ex) ->
                 Some ex
             | Some (Runtime ty) ->
@@ -491,10 +529,10 @@ functor
 
         method private with_vars : 'a. tbinding list -> (unit -> 'a) -> 'a =
           fun vars f ->
-            let prev_scope = ctx.scope in
-            ctx.scope <- vars :: ctx.scope ;
+            let prev_scope = !(ctx.scope) in
+            ctx.scope := vars :: prev_scope ;
             let output = f () in
-            ctx.scope <- prev_scope ;
+            ctx.scope := prev_scope ;
             output
       end
   end

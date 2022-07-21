@@ -184,6 +184,7 @@ functor
       | If of if_
       | Let of (string located * expr) list
       | DestructuringLet of destructuring_let
+      | Assignment of assignment
       | Return of expr
       | Break of stmt
       | Expr of expr
@@ -195,6 +196,8 @@ functor
       { destructuring_let : (string located * string located) list;
         destructuring_let_expr : expr;
         destructuring_let_rest : bool }
+
+    and assignment = {assignment_ident : string located; assignment_expr : expr}
 
     and type_ =
       | TypeN of int

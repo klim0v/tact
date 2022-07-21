@@ -4590,3 +4590,66 @@ let%expect_test "struct signatures" =
           (un_sig_base_id 38))
          ((un_sig_cases ((StructType 14) (StructType 18))) (un_sig_methods ())
           (un_sig_base_id 20))))))) |}]
+
+let%expect_test "assignment" =
+  let source =
+    {|
+      fn test() { 2 }
+      let a = 1;
+      if (true) {
+        a = test();
+      }
+      if (false) {
+        a = 3;
+      }
+  |}
+  in
+  pp_compile source ;
+  [%expect
+    {|
+    (Ok
+     ((bindings
+       ((a (Value (Integer 2)))
+        (test
+         (Value
+          (Function
+           ((function_signature
+             ((function_params ()) (function_returns IntegerType)))
+            (function_impl (Fn (Return (Value (Integer 2)))))))))))
+      (structs ()) (type_counter <opaque>) (memoized_fcalls <opaque>)
+      (struct_signs (0 ()))
+      (union_signs
+       (5
+        (((un_sig_cases ((StructType 59) (StructType 76))) (un_sig_methods ())
+          (un_sig_base_id 77))
+         ((un_sig_cases ((StructType 55))) (un_sig_methods ())
+          (un_sig_base_id 60))
+         ((un_sig_cases ((UnionType 21) (UnionType 39))) (un_sig_methods ())
+          (un_sig_base_id 44))
+         ((un_sig_cases ((StructType 31) (StructType 35))) (un_sig_methods ())
+          (un_sig_base_id 38))
+         ((un_sig_cases ((StructType 14) (StructType 18))) (un_sig_methods ())
+          (un_sig_base_id 20))))))) |}]
+
+let%expect_test "assignment without initial declaration" =
+  let source = {|
+      a = 2;
+  |} in
+  pp_compile source ;
+  [%expect
+    {|
+    (((UnresolvedIdentifier a))
+     ((bindings ()) (structs ()) (type_counter <opaque>)
+      (memoized_fcalls <opaque>) (struct_signs (0 ()))
+      (union_signs
+       (5
+        (((un_sig_cases ((StructType 59) (StructType 76))) (un_sig_methods ())
+          (un_sig_base_id 77))
+         ((un_sig_cases ((StructType 55))) (un_sig_methods ())
+          (un_sig_base_id 60))
+         ((un_sig_cases ((UnionType 21) (UnionType 39))) (un_sig_methods ())
+          (un_sig_base_id 44))
+         ((un_sig_cases ((StructType 31) (StructType 35))) (un_sig_methods ())
+          (un_sig_base_id 38))
+         ((un_sig_cases ((StructType 14) (StructType 18))) (un_sig_methods ())
+          (un_sig_base_id 20))))))) |}]
